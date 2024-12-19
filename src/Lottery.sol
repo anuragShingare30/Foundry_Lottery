@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts@1.2.0/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts@1.2.0/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {AutomationCompatibleInterface} from "@chainlink/contracts@1.2.0/src/v0.8/automation/AutomationCompatible.sol";
 
 /**
  * @title A lottery smart contract
@@ -11,20 +12,23 @@ import {VRFV2PlusClient} from "@chainlink/contracts@1.2.0/src/v0.8/vrf/dev/libra
  * @dev Implements chainlink VRFv2.5 and chainlink automation
  */
 
-abstract contract Lottery is VRFConsumerBaseV2Plus {
+abstract contract Lottery is
+    VRFConsumerBaseV2Plus,
+    AutomationCompatibleInterface
+{
     // Errors
     error Lottery_NotEnoughETHSent();
     error Lottery_NoEnoughUser();
     error Lottery_NoEnoughTimeHasPassed();
     error Lottery_FailedToWithDrawPrizePool();
     error Lottery_LotteryIsClosed();
+    error Lottery_ConditionNotMetToSelectWinner();
 
     // Type Declaration
     struct User {
         uint256 id;
         uint256 entryFee;
         address payable userAddress;
-        string userName;
     }
 
     enum LotteryStatus {
@@ -34,17 +38,19 @@ abstract contract Lottery is VRFConsumerBaseV2Plus {
 
     // State Variable
     uint256 private immutable i_entranceFee;
-    uint256 private immutable i_interval;
+    uint256 private immutable i_timeInterval;
     uint256 private s_lastTimeStamp;
     uint256 private s_subscriptionId;
     bytes32 private immutable i_keyHash;
-    uint32 public callbackGasLimit = 100000;
-    uint16 public requestConfirmations = 3;
-    uint32 public numWords = 1;
-    LotteryStatus private s_lotteryStatus;
+    uint32 private callbackGasLimit = 100000;
+    uint16 private requestConfirmations = 3;
+    uint32 private numWords = 1;
+    address public s_recentWinner;
+    uint256 public s_recentWinnerPrizePool;
+    LotteryStatus public s_lotteryStatus;
 
     // Events
-    event EnteredUser(address indexed userAddress, string userName);
+    event EnteredUser(address indexed userAddress);
     event SelectedWinner(
         address indexed userAddress,
         string userName,
@@ -53,17 +59,17 @@ abstract contract Lottery is VRFConsumerBaseV2Plus {
     event LotteryWinner(
         uint256 requestId,
         address winnerAddress,
-        uint indexOfWinner
+        uint256 indexOfWinner
     );
 
     constructor(
         uint256 entranceFee,
         uint256 interval,
         bytes32 gasLane,
-        uint subscriptionId
+        uint256 subscriptionId
     ) VRFConsumerBaseV2Plus(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B) {
         i_entranceFee = entranceFee;
-        i_interval = interval;
+        i_timeInterval = interval;
         s_lastTimeStamp = block.timestamp;
         i_keyHash = gasLane;
         s_subscriptionId = subscriptionId;
@@ -72,7 +78,10 @@ abstract contract Lottery is VRFConsumerBaseV2Plus {
 
     User[] private s_userArray;
 
-    function enterLottery(string memory _userName) public payable {
+    /**
+     * Check the status and eligibility for user to enter lottery
+     */
+    function enterLottery() public payable {
         // check the status of lottery
         if (s_lotteryStatus != LotteryStatus.Open) {
             revert Lottery_LotteryIsClosed();
@@ -87,27 +96,51 @@ abstract contract Lottery is VRFConsumerBaseV2Plus {
         User memory newuser = User({
             id: s_userArray.length,
             entryFee: msg.value,
-            userAddress: payable(msg.sender),
-            userName: _userName
+            userAddress: payable(msg.sender)
         });
         s_userArray.push(newuser);
 
-        emit EnteredUser(msg.sender, _userName);
+        emit EnteredUser(msg.sender);
     }
 
-    // 1. Get a random number
-    // 2. use random number to pick a player
-    // 3. Use chainlink automation to automatically called
 
-    function selectWinner() public payable returns (uint256) {
-        // check for enough time is passed
-        if ((block.timestamp - s_lastTimeStamp < i_interval)) {
-            revert Lottery_NoEnoughTimeHasPassed();
+    /**
+     * @dev ChainLink automation v2.0
+     * checkUpkeep function that contains the logic that will be executed offchain to see if performUpkeep should be executed.
+     * checkUpkeep returns two params upkeepNeeded and performData.
+     * performUpkeep function that will be executed onchain when checkUpkeep returns true.
+
+     * The following should be true in order doe upkeepNeeded to be true:
+     * 1. timeHasPassed
+     * 2. lottery is open
+     * 3. contract has balance and players
+     */
+    function checkUpkeep() public view returns (bool upkeepNeeded) {
+        upkeepNeeded =
+            ((block.timestamp - s_lastTimeStamp) > i_timeInterval) &&
+            (s_lotteryStatus == LotteryStatus.Open) &&
+            (address(this).balance > 0) &&
+            (s_userArray.length > 0);
+        return upkeepNeeded;
+    }
+
+    /**
+     * @dev Chainlink VRFv2.5
+     * Get a random number using chainlink VRF
+     * use random number to pick a player
+     * This function is named selectWinner to performUpkeep
+     * Use chainlink automation to automatically called
+     */
+    function performUpkeep() external  payable returns (uint256) {
+        
+        // check the condition for function to be called automatically
+        (bool upkeepNeeded) = checkUpkeep();
+        if(!upkeepNeeded){
+            revert Lottery_ConditionNotMetToSelectWinner();
         }
-
         // change the lottery status
         s_lotteryStatus = LotteryStatus.Closed;
-        // This is a struct from VRF
+        // This is a struct from VRF to call the requestId for RNG
         VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient
             .RandomWordsRequest({
                 keyHash: i_keyHash,
@@ -120,23 +153,30 @@ abstract contract Lottery is VRFConsumerBaseV2Plus {
                 )
             });
 
-        uint requestId = s_vrfCoordinator.requestRandomWords(request);
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
         return requestId;
     }
 
-    // CEI: Checks(Conditionals), Effect(Internal Contract State), Interaction(External Contract Interaction) pattern
+    /**
+     * CEI pattern
+     * Checks(Conditionals)
+     * Effect(Internal Contract State)
+     * Interaction(External Contract Interaction)
+     */
     function fulfillRandomWords(
         // Checks
         uint256 _requestId,
         uint256[] calldata _randomWords
     ) internal override {
         // EFFECT
-        uint index = (_randomWords[0] % s_userArray.length);
+        uint256 index = (_randomWords[0] % s_userArray.length);
         // change the status to open to start new lottery
         s_lotteryStatus = LotteryStatus.Open;
         // resetting the s_userArray to zero
         s_userArray = new User[](0);
         s_lastTimeStamp = block.timestamp;
+        s_recentWinner = s_userArray[index].userAddress;
+        s_recentWinnerPrizePool = (address(this).balance);
         emit LotteryWinner(_requestId, s_userArray[index].userAddress, index);
 
         // INTERACTION (EXTERNAL CONTRACT INTERACTION)
@@ -147,6 +187,8 @@ abstract contract Lottery is VRFConsumerBaseV2Plus {
             revert Lottery_FailedToWithDrawPrizePool();
         }
     }
+
+    
 
     function getEntryFeeAmount() public view returns (uint256) {
         return i_entranceFee;
