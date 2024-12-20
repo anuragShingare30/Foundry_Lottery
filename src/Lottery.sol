@@ -12,10 +12,7 @@ import {AutomationCompatibleInterface} from "@chainlink/contracts@1.2.0/src/v0.8
  * @dev Implements chainlink VRFv2.5 and chainlink automation
  */
 
-abstract contract Lottery is
-    VRFConsumerBaseV2Plus,
-    AutomationCompatibleInterface
-{
+contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     // Errors
     error Lottery_NotEnoughETHSent();
     error Lottery_NoEnoughUser();
@@ -65,9 +62,10 @@ abstract contract Lottery is
     constructor(
         uint256 entranceFee,
         uint256 interval,
+        address VRFCoordinator,
         bytes32 gasLane,
         uint256 subscriptionId
-    ) VRFConsumerBaseV2Plus(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B) {
+    ) VRFConsumerBaseV2Plus(VRFCoordinator) {
         i_entranceFee = entranceFee;
         i_timeInterval = interval;
         s_lastTimeStamp = block.timestamp;
@@ -103,7 +101,6 @@ abstract contract Lottery is
         emit EnteredUser(msg.sender);
     }
 
-
     /**
      * @dev ChainLink automation v2.0
      * checkUpkeep function that contains the logic that will be executed offchain to see if performUpkeep should be executed.
@@ -115,13 +112,21 @@ abstract contract Lottery is
      * 2. lottery is open
      * 3. contract has balance and players
      */
+
+
+    function checkUpkeep(
+        bytes calldata checkData
+    ) external override returns (bool upkeepNeeded, bytes memory performData) {}
+
+    function performUpkeep(bytes calldata performData) external override {}
+
+
     function checkUpkeep() public view returns (bool upkeepNeeded) {
         upkeepNeeded =
             ((block.timestamp - s_lastTimeStamp) > i_timeInterval) &&
             (s_lotteryStatus == LotteryStatus.Open) &&
             (address(this).balance > 0) &&
             (s_userArray.length > 0);
-        return upkeepNeeded;
     }
 
     /**
@@ -131,11 +136,10 @@ abstract contract Lottery is
      * This function is named selectWinner to performUpkeep
      * Use chainlink automation to automatically called
      */
-    function performUpkeep() external  payable returns (uint256) {
-        
+    function performUpkeep() public returns (uint256 requestId) {
         // check the condition for function to be called automatically
-        (bool upkeepNeeded) = checkUpkeep();
-        if(!upkeepNeeded){
+        bool upkeepNeeded = checkUpkeep();
+        if (!upkeepNeeded) {
             revert Lottery_ConditionNotMetToSelectWinner();
         }
         // change the lottery status
@@ -153,8 +157,7 @@ abstract contract Lottery is
                 )
             });
 
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
-        return requestId;
+        requestId = s_vrfCoordinator.requestRandomWords(request);
     }
 
     /**
@@ -187,8 +190,6 @@ abstract contract Lottery is
             revert Lottery_FailedToWithDrawPrizePool();
         }
     }
-
-    
 
     function getEntryFeeAmount() public view returns (uint256) {
         return i_entranceFee;
