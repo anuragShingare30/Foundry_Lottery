@@ -7,14 +7,17 @@ import {HelperConfig} from "./HelperConfig.s.sol";
 
 contract MyScript is Script {
 
+
     function setUp() public returns (Lottery, HelperConfig) {
-        // CREATED NEW NETWORK CONFIG INSTANCE
+
+        // CREATED NEW HELPERNETWORK CONFIG INSTANCE
         HelperConfig helperConfig = new HelperConfig();
-        uint256 _entranceFee = helperConfig.getConfigByChainId(block.chainid).entranceFee;
-        uint256 _interval = helperConfig.getConfigByChainId(block.chainid).interval;
-        address _VRFCoordinator = helperConfig.getConfigByChainId(block.chainid).VRFCoordinator;
-        bytes32 _gasLane = helperConfig.getConfigByChainId(block.chainid).gasLane;
-        uint256 _subscriptionId = helperConfig.getConfigByChainId(block.chainid).subscriptionId;
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfigByChainId(block.chainid);
+        uint256 _entranceFee = config.entranceFee;
+        uint256 _interval = config.interval;
+        address _VRFCoordinator = config.VRFCoordinator;
+        bytes32 _gasLane = config.gasLane;
+        uint256 _subscriptionId = config.subscriptionId;
 
 
         vm.startBroadcast();
@@ -27,13 +30,14 @@ contract MyScript is Script {
             _gasLane,
             _subscriptionId
         );
+
         vm.stopBroadcast();
 
         return (lottery, helperConfig);
     }
 
 
-    // BY DEFAULT forge script EXECUTES THE UN FUNCTION DURING DEPLOYMENT
+    // BY DEFAULT forge script EXECUTES THE 'run' FUNCTION DURING DEPLOYMENT
     function run() external returns(Lottery,HelperConfig) {
         return setUp();
     }
