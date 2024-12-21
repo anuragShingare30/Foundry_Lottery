@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {VRFConsumerBaseV2Plus} from "@chainlink/contracts@1.2.0/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFV2PlusClient} from "@chainlink/contracts@1.2.0/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
-import {AutomationCompatibleInterface} from "@chainlink/contracts@1.2.0/src/v0.8/automation/AutomationCompatible.sol";
+import {VRFConsumerBaseV2Plus} from "lib/chainlink-brownie-contracts/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "lib/chainlink-brownie-contracts/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {AutomationCompatibleInterface} from "lib/chainlink-brownie-contracts/contracts/src/v0.8/automation/AutomationCompatible.sol";
 
 /**
  * @title A lottery smart contract
@@ -34,7 +34,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     }
 
     // State Variable
-    uint256 private immutable i_entranceFee;
+    uint256 public immutable i_entranceFee;
     uint256 private immutable i_timeInterval;
     uint256 private s_lastTimeStamp;
     uint256 private s_subscriptionId;
@@ -114,14 +114,8 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      */
 
 
-    function checkUpkeep(
-        bytes calldata checkData
-    ) external override returns (bool upkeepNeeded, bytes memory performData) {}
 
-    function performUpkeep(bytes calldata performData) external override {}
-
-
-    function checkUpkeep() public view returns (bool upkeepNeeded) {
+    function checkUpkeep(bytes calldata checkData) public override view returns (bool upkeepNeeded,bytes memory performData) {
         upkeepNeeded =
             ((block.timestamp - s_lastTimeStamp) > i_timeInterval) &&
             (s_lotteryStatus == LotteryStatus.Open) &&
@@ -136,9 +130,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      * This function is named selectWinner to performUpkeep
      * Use chainlink automation to automatically called
      */
-    function performUpkeep() public returns (uint256 requestId) {
+    function performUpkeep(bytes calldata performData) public override {
         // check the condition for function to be called automatically
-        bool upkeepNeeded = checkUpkeep();
+       ( bool upkeepNeeded,bytes memory performData )= checkUpkeep(performData);
         if (!upkeepNeeded) {
             revert Lottery_ConditionNotMetToSelectWinner();
         }
@@ -157,7 +151,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 )
             });
 
-        requestId = s_vrfCoordinator.requestRandomWords(request);
+        uint requestId = s_vrfCoordinator.requestRandomWords(request);
     }
 
     /**
@@ -193,5 +187,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     function getEntryFeeAmount() public view returns (uint256) {
         return i_entranceFee;
+    }
+
+    function getLotteryStatus() public view returns(LotteryStatus){
+        return s_lotteryStatus;
     }
 }
