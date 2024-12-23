@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console} from "../lib/forge-std/src/Script.sol";
 import {Lottery} from "../src/Lottery.sol";
-import {VRFCoordinatorV2_5Mock} from "chainlink-brownie-contracts/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {VRFCoordinatorV2_5Mock} from "../lib/chainlink-brownie-contracts/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 
 abstract contract CodeConstants {
@@ -44,6 +44,10 @@ contract HelperConfig is Script,CodeConstants{
         networkConfigs[ETH_SEPOLIA_CHAIN_ID] = getSepoliaETHConfig();
         networkConfigs[ZKSYNC_SEPOLIA_CHAIN_ID] = getL2ChainConfig();
         networkConfigs[LOCAL_CHAIN_ID] = getAnvilETHConfig();
+    }
+
+    function getConfig() public view returns(NetworkConfig memory){
+        return getConfigByChainId(block.chainid);
     }
 
     function getConfigByChainId(uint256 chainId) public view returns(NetworkConfig memory){

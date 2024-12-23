@@ -12,7 +12,7 @@ contract LotteryScript is Script {
 
         // CREATED NEW HELPERNETWORK CONFIG INSTANCE
         HelperConfig helperConfig = new HelperConfig();
-        HelperConfig.NetworkConfig memory config = helperConfig.getConfigByChainId(block.chainid);
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
         uint256 _entranceFee = config.entranceFee;
         uint256 _interval = config.interval;
         address _VRFCoordinator = config.VRFCoordinator;
@@ -21,7 +21,7 @@ contract LotteryScript is Script {
 
 
         vm.startBroadcast();
-
+        
         // CREATED NEW CONTRACT INSTANCE AND PASSED CONSTRUCTOR PARAMS
         Lottery lottery = new Lottery(
             _entranceFee,

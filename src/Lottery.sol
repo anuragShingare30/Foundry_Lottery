@@ -12,10 +12,11 @@ import {AutomationCompatibleInterface} from "lib/chainlink-brownie-contracts/con
  * @dev Implements chainlink VRFv2.5 and chainlink automation
  */
 
+
 contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     // Errors
     error Lottery_NotEnoughETHSent();
-    error Lottery_NoEnoughUser();
+    error Lottery_Only5UsersAllowed();
     error Lottery_NoEnoughTimeHasPassed();
     error Lottery_FailedToWithDrawPrizePool();
     error Lottery_LotteryIsClosed();
@@ -33,6 +34,8 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         Closed
     }
 
+    User[] private s_userArray;
+
     // State Variable
     uint256 public immutable i_entranceFee;
     uint256 private immutable i_timeInterval;
@@ -44,6 +47,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     uint32 private numWords = 1;
     address public s_recentWinner;
     uint256 public s_recentWinnerPrizePool;
+    uint256 private i_lastRequestId;
     LotteryStatus public s_lotteryStatus;
 
     // Events
@@ -55,10 +59,11 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     );
     event LotteryWinner(
         uint256 requestId,
-        address winnerAddress,
+        address indexed winnerAddress,
         uint256 indexOfWinner
     );
 
+    // functions
     constructor(
         uint256 entranceFee,
         uint256 interval,
@@ -74,10 +79,8 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_lotteryStatus = LotteryStatus.Open;
     }
 
-    User[] private s_userArray;
-
     /**
-     * Check the status and eligibility for user to enter lottery
+        @dev Check the status and eligibility for user to enter lottery
      */
     function enterLottery() public payable {
         // check the status of lottery
@@ -89,7 +92,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
             revert Lottery_NotEnoughETHSent();
         }
         if (s_userArray.length >= 5) {
-            revert Lottery_NoEnoughUser();
+            revert Lottery_Only5UsersAllowed();
         }
         User memory newuser = User({
             id: s_userArray.length,
@@ -104,8 +107,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     /**
      * @dev ChainLink automation v2.0
      * checkUpkeep function that contains the logic that will be executed offchain to see if performUpkeep should be executed.
-     * checkUpkeep returns two params upkeepNeeded and performData.
+     * checkUpkeep returns two params bool upkeepNeeded and bytes calldata performData.
      * performUpkeep function that will be executed onchain when checkUpkeep returns true.
+     * The logic which has to be automated is written in performUpkeep function
 
      * The following should be true in order doe upkeepNeeded to be true:
      * 1. timeHasPassed
@@ -113,9 +117,14 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      * 3. contract has balance and players
      */
 
-
-
-    function checkUpkeep(bytes calldata checkData) public override view returns (bool upkeepNeeded,bytes memory performData) {
+    function checkUpkeep(
+        bytes memory /* checkData */
+    )
+        public
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory /* performData */)
+    {
         upkeepNeeded =
             ((block.timestamp - s_lastTimeStamp) > i_timeInterval) &&
             (s_lotteryStatus == LotteryStatus.Open) &&
@@ -124,15 +133,17 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     }
 
     /**
-     * @dev Chainlink VRFv2.5
+     * @dev Chainlink VRFv2.5 
+     * @dev This function will reach out oracle network to make that request for random words.
      * Get a random number using chainlink VRF
+     * Use chainlink automation to automatically called smart contract
+
+     * requestRandomWords now performUpkeep for chainlink automation/
      * use random number to pick a player
-     * This function is named selectWinner to performUpkeep
-     * Use chainlink automation to automatically called
      */
-    function performUpkeep(bytes calldata performData) public override {
+    function performUpkeep(bytes calldata /* performData */ ) external override {
         // check the condition for function to be called automatically
-       ( bool upkeepNeeded,bytes memory performData )= checkUpkeep(performData);
+        (bool upkeepNeeded,) = checkUpkeep("");
         if (!upkeepNeeded) {
             revert Lottery_ConditionNotMetToSelectWinner();
         }
@@ -152,9 +163,15 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
             });
 
         uint requestId = s_vrfCoordinator.requestRandomWords(request);
+        i_lastRequestId = requestId;
     }
 
     /**
+     * @dev fulfillRandomWords will just store the values
+     * The logic for which we select a random winner is fulfillRandomWords(selectWinner)
+
+
+     The pattern which we should followed or should be updated before production : 
      * CEI pattern
      * Checks(Conditionals)
      * Effect(Internal Contract State)
@@ -189,7 +206,11 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         return i_entranceFee;
     }
 
-    function getLotteryStatus() public view returns(LotteryStatus){
+    function getLotteryStatus() public view returns (LotteryStatus) {
         return s_lotteryStatus;
+    }
+
+    function getPlayerAddress(uint index) public view returns (address) {
+        return s_userArray[index].userAddress;
     }
 }
