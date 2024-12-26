@@ -7,7 +7,7 @@ import {VRFCoordinatorV2_5Mock} from "../lib/chainlink-brownie-contracts/contrac
 import {LinkToken} from "test/mock/LinkToken.sol";
 import {CreateSubscription} from "./Interaction.s.sol";
 
-abstract contract CodeConstants {
+contract CodeConstants {
     // MOCK CONTRACT VALUES
     uint96 public constant MOCK_BASEPRICE = 100000000000000000;
     uint96 public constant MOCK_GAS_PRICE_LINK = 1000000000;

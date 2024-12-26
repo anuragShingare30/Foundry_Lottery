@@ -76,11 +76,14 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_lastTimeStamp = block.timestamp;
         i_keyHash = gasLane;
         s_subscriptionId = subscriptionId;
-        s_lotteryStatus = LotteryStatus.Open;
     }
 
     /**
         @dev Check the status and eligibility for user to enter lottery
+            a. Lottery should be open
+            b. Enough ETH should be sent
+            c. 5 users are allowed
+            d. Add new user to users array
      */
     function enterLottery() public payable {
         // check the status of lottery
