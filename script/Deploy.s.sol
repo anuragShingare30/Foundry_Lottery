@@ -4,6 +4,8 @@ pragma solidity ^0.8.26;
 import {Script, console} from "lib/forge-std/src/Script.sol";
 import {Lottery} from "../src/Lottery.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
+import {CreateSubscription} from "./Interaction.s.sol";
+
 
 contract LotteryScript is Script {
 
@@ -13,22 +15,29 @@ contract LotteryScript is Script {
         // CREATED NEW HELPERNETWORK CONFIG INSTANCE
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
-        uint256 _entranceFee = config.entranceFee;
-        uint256 _interval = config.interval;
-        address _VRFCoordinator = config.VRFCoordinator;
-        bytes32 _gasLane = config.gasLane;
-        uint256 _subscriptionId = config.subscriptionId;
+        
+        if(config.subscriptionId == 0){
+            // create subscription and get the subscriptionId
+            CreateSubscription createSubscription = new CreateSubscription();
+            (config.subscriptionId,config.VRFCoordinator) = createSubscription.createSubscription();
 
+
+            // fund subscription
+            
+
+            // add consumers
+
+        }
 
         vm.startBroadcast();
         
         // CREATED NEW CONTRACT INSTANCE AND PASSED CONSTRUCTOR PARAMS
         Lottery lottery = new Lottery(
-            _entranceFee,
-            _interval,
-            _VRFCoordinator,
-            _gasLane,
-            _subscriptionId
+            config.entranceFee,
+            config.interval,
+            config.VRFCoordinator,
+            config.gasLane,
+            config.subscriptionId
         );
 
         vm.stopBroadcast();

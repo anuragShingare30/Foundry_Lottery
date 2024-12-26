@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {Script, console} from "../lib/forge-std/src/Script.sol";
 import {Lottery} from "../src/Lottery.sol";
 import {VRFCoordinatorV2_5Mock} from "../lib/chainlink-brownie-contracts/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-
+import {LinkToken} from "test/mock/LinkToken.sol";
 
 abstract contract CodeConstants {
     // MOCK CONTRACT VALUES
@@ -32,6 +32,7 @@ contract HelperConfig is Script,CodeConstants{
         address VRFCoordinator;
         bytes32 gasLane;
         uint256 subscriptionId;
+        address link;
     }
 
     // STATE VARIABLES
@@ -68,7 +69,8 @@ contract HelperConfig is Script,CodeConstants{
             interval: 30 seconds,
             VRFCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
             gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
-            subscriptionId:4145
+            subscriptionId:4145,
+            link:0x779877A7B0D9E8603169DdbD7836e478b4624789
         });
     }
 
@@ -85,6 +87,7 @@ contract HelperConfig is Script,CodeConstants{
         // DEPLOY MOCK SMART CONTRACT
         vm.startBroadcast();
         VRFCoordinatorV2_5Mock mockVRFcontract = new VRFCoordinatorV2_5Mock(MOCK_BASEPRICE,MOCK_GAS_PRICE_LINK,MOCK_WEI_PER_UNIT_LINK);
+        LinkToken linkToken = new LinkToken();
         vm.stopBroadcast();
 
         localNetworkConfig = NetworkConfig({
@@ -92,7 +95,8 @@ contract HelperConfig is Script,CodeConstants{
             interval: 30 seconds,
             VRFCoordinator: address(mockVRFcontract),
             gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
-            subscriptionId:1
+            subscriptionId:1,
+            link:address(linkToken)
         });
         return localNetworkConfig;
     }
