@@ -18,7 +18,7 @@ contract LotteryTest is Test {
     Lottery lottery;
     HelperConfig helperConfig;
 
-
+  
     uint256 _entranceFee;
     uint256 _interval;
     address _VRFCoordinator;
