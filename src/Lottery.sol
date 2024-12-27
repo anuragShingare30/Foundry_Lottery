@@ -62,6 +62,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         address indexed winnerAddress,
         uint256 indexOfWinner
     );
+    event RequestedLotteryWinner(uint256 indexed requestId);
 
     // functions
     constructor(
@@ -167,6 +168,8 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
         uint requestId = s_vrfCoordinator.requestRandomWords(request);
         i_lastRequestId = requestId;
+        emit RequestedLotteryWinner(requestId);
+
     }
 
     /**
@@ -190,7 +193,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         // change the status to open to start new lottery
         s_lotteryStatus = LotteryStatus.Open;
         // resetting the s_userArray to zero
-        s_userArray = new User[](0);
+        delete s_userArray;
         s_lastTimeStamp = block.timestamp;
         s_recentWinner = s_userArray[index].userAddress;
         s_recentWinnerPrizePool = (address(this).balance);
@@ -215,5 +218,13 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     function getPlayerAddress(uint index) public view returns (address) {
         return s_userArray[index].userAddress;
+    }
+
+    function getRecentWinner() public view returns(address){
+        return s_recentWinner;
+    }
+
+    function getLastTimeStamp() public view returns(uint){
+        return s_lastTimeStamp;
     }
 }
