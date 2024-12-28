@@ -391,7 +391,10 @@ foundry-zksync
 3. **FORKED TEST** - TESTING OUR CODE ON A SIMULATED REAL ENVIRONMENT.
 4. **STAGING TEST** - TESTING OUR CODE IN TESTNET/MAINNET. EX:- SEPOLIA, ANVIL LOCAL TESTING
 
-
+5. **FUZZ TESTING**
+   - Stateful fuzz
+   - stateless fuzz
+   - formal verification
 
 #### FORK TESTING/UNIT TESTING (COMMANDS)
 
@@ -407,21 +410,18 @@ echo $RPC_URL
 
 // TESTING SC
 forge test -vvv
-
 forge test --fork-url $RPC_URL -vvvv
 
 // TO RUN THE SINGLE TEST
 forge test --mt testFunctionName
 forge test --mt testBalance -vvv --fork-url $RPC_URL
 
-// CONVERGING SC -> This command displays which parts of your code are covered by tests.
-forge converge --fork-url $RPC_URL   
 
 // DEBUGGING SC
 forge debug --debug src/Web3.sol:TestContract --sig "function(argu)" "arguValue"
 
 
-// Forge supports identifying contracts in a forked environment with Etherscan.
+// Verifiying smart contract on etherscan
 forge test --fork-url <your_rpc_url> --etherscan-api-key <your_etherscan_api_key>
 ```
 
@@ -539,6 +539,8 @@ forge test --fork-url <your_rpc_url> --etherscan-api-key <your_etherscan_api_key
         assert(uint256(value) > 0);
     }
     ``` 
+
+
 
 
 
@@ -758,3 +760,4 @@ You must also add `ffi = true` to your `foundry.toml` to use this feature.
 
 
 
+# best practices and cheetcodes
