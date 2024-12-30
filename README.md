@@ -1,6 +1,6 @@
 ### FOUNDRY AND FORGE️‍ 🔥
 
-- Foundry totally written on solidity and not on JS.
+- Foundry totally written on solidity.
 
 **Note : dependencies are added as git-submodules and not as npm or nodejs modules**
 
@@ -69,7 +69,7 @@ uint256 privateKey = vm.envUint("ANVIL_PRIVATE_KEY");
 
 
 
-#### DEPLOYING SMART CONTRACT (COMMMANDS)
+#### DEPLOYING SMART CONTRACT (COMMANDS)
 
 ```solidity
 // Scripting with Arguments(Passing params from command line) OPTIONAL
@@ -90,7 +90,7 @@ forge script script/Deploy.s.sol:MyScript --rpc-url $SEPOLIA_RPC_URL --private-k
 
 
 
-##### STORE YOUR PRIVATE KEY IN KEYSTORE (CAST)
+#### STORE YOUR PRIVATE KEY IN KEYSTORE (CAST)
 
 - Here, we will not store our private key in dotenv file. Rather, we will store it in **KeyStore** provided by foundry.
 - Once we have stored it in keystore we can used it in any project.
@@ -111,10 +111,10 @@ cast wallet list
 
 **By default, scripts are executed by calling the function named run, our entrypoint.**
 
-```solidity
-// Just a 
-// script/Deploy.s.sol
 
+
+**script/Deploy.s.sol**
+```solidity
 import {Script} from "forge-std/Script.sol";
 import {TestContract} from "../src/Web3.sol";
 
@@ -323,8 +323,8 @@ contract MyScript is Script {
 
 **change the .env and foundry.toml file**
 
+**.env**
 ```js
-// .env
 # SEPOLIA TESTNET
 SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/{INFURA_KEY}
 ETHERSCAN_API_KEY=
@@ -335,14 +335,26 @@ LOCALLY_RPC_URL=http://localhost:8545
 ANVIL_PRIVATE_KEY=
 ```
 
+**foundry.toml**
 ```js
-// foundry.toml
-fs_permissions = [{ access = "read", path = "./"}]
-[rpc_endpoints]
-sepolia = "${SEPOLIA_RPC_URL}"
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+remappings = [
+                '@chainlink/contracts@1.2.0/=lib/chainlink-brownie-contracts/contracts',
+                'forge-std/=lib/forge-std/src/',
+                '@solmate/=lib/solmate/src'
+                ]
 
-[etherscan]
-sepolia = { key = "${ETHERSCAN_API_KEY}" }
+solc = "0.8.26"
+via_ir = true
+fs_permissions = [
+    { access = "read", path = "./broadcast" },
+    { access = "read", path = "./reports" },
+]
+[fuzz]
+runs=256
 ```
 
 
@@ -386,17 +398,19 @@ foundry-zksync
 
 - Forge Standard Library -> forge-std
 
-1. **UNIT TESTING** - TESTING A SPECIFIC PART OF OUR CODE.
-2. **INTEGRATION TEST** - INTEGRATING SC A TESTING SPECIFIC PORTION.
-3. **FORKED TEST** - TESTING OUR CODE ON A SIMULATED REAL ENVIRONMENT.
+1. **UNIT TESTING** - TESTING A SPECIFIC PARTs OF OUR CODE.
+2. **INTEGRATION TEST** - TESTING THE INTERACTIONS PART OF OUR SMART CONTRACT
+3. **FORKED TEST** - TESTING OUR CODE ON A SIMULATED REAL ENVIRONMENT(Sepolia or Rollups)
 4. **STAGING TEST** - TESTING OUR CODE IN TESTNET/MAINNET. EX:- SEPOLIA, ANVIL LOCAL TESTING
 
-5. **FUZZ TESTING**
+5. **FUZZ TESTING** -  identify vulnerabilities in a smart contract by systematically inputting random data values
    - Stateful fuzz
    - stateless fuzz
    - formal verification
 
-#### FORK TESTING/UNIT TESTING (COMMANDS)
+
+
+#### FORK TESTING/UNIT TESTING (COMMANDS)   
 
 - Forge supports testing in a forked environment
 - To run all tests in a forked environment, such as a forked Ethereum mainnet, pass an RPC URL via the --fork-url flag
@@ -541,12 +555,19 @@ forge test --fork-url <your_rpc_url> --etherscan-api-key <your_etherscan_api_key
     ``` 
 
 
+15. **During testing with foundry, keep some point for best practices:**
+    - Never make a variable public which contain imp. keys.
+    - Write `getterFunctions` 
+    - Only main contract can call `errors,events,structs,enums,types aliases`
+    - Contract instance can call/send `getter n write functions`
+    - continue...
+
 
 
 
 #### WRITING UNIT/FORK TEST
 
-- For, advance testing we will use `HelperConfig, Contract and Deploy` file.
+- For, advance testing we will use `HelperConfig, MainContract and Deploy` file.
 - Follow, `Best practices and vm cheatcodes above for advance and better testing`.
 
 
@@ -605,6 +626,8 @@ contract ContractTest is Test {
 #### Remapping dependencies
 
 - Before running the forge remapping command we need to store the path in **toml**
+- Forge can remap dependencies to make them easier to import. Forge will automatically try to deduce some remappings for you:
+
 
 ```js
 remapping = ['@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts']
@@ -613,7 +636,6 @@ remapping = ['@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts']
 - **@chainlink/contracts** now is equal to the actual path of contract
 
 ```solidity
-// Forge can remap dependencies to make them easier to import. Forge will automatically try to deduce some remappings for you:
 forge remappings
 ```
 
@@ -631,7 +653,7 @@ forge coverage
 // Create lcov file with coverage data:
 forge coverage --report lcov
 
-// This will create a .txt file that will give us the :
+// This will create a .txt file that will give us the parts of our contracts cover:
 forge coverage --report debug > coverage.txt
 ```
 
@@ -756,8 +778,3 @@ You must also add `ffi = true` to your `foundry.toml` to use this feature.
 ### FoundryZkSync Functions
 
 - `is_foundry_zksync`: Returns true if you are on `foundry-zksync`
-
-
-
-
-# best practices and cheetcodes

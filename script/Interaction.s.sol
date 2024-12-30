@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Lottery} from "src/Lottery.sol";
+
 import {LinkToken} from "test/mock/LinkToken.sol";
 import {HelperConfig, CodeConstants} from "./HelperConfig.s.sol";
 import {Script, console} from "../lib/forge-std/src/Script.sol";
