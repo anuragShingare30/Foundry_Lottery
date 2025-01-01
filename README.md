@@ -22,6 +22,9 @@ foundryup
 // to initialize project
 forge init ProjectName
 forge install openzeppelin/openzeppelin-contracts
+forge install smartcontractkit/chainlink-brownie-contracts --no-commit
+forge install transmissions11/solmate
+forge install Cyfrin/foundry-devops --no-commit
 ```
 
 **forge** : the build, test, debug, deploy smart contracts
